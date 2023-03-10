@@ -1,93 +1,159 @@
 package co.edu.unbosque.controller;
-
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.ServerSocket;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
-/**
- *
- * @author englinx
- */
-public class Cliente extends Thread{
-    // initialize socket and input output streams 
-    private Socket socket;
-    private ServerSocket server; 
-    private Scanner sn;
-    private DataOutputStream out;
-    private DataInputStream in; //Input stream from server
-    private String address;
-    private int port;
-  
-    // constructor to put ip address and port 
-    public Cliente(String address, int port){ 
-    	// initialize socket and input output streams 
-        this.socket= null;
-        this.server=null;
-        this.sn=new Scanner(System.in);
-        this.out= null;
-        this.address=address;
-        this.port=port;
-        
-        
-      
-    }
+import co.edu.unbosque.model.CajaPC;
+import co.edu.unbosque.model.Entrenador;
+import co.edu.unbosque.model.EquipoPokemon;
+import co.edu.unbosque.model.Pokemon;
+import co.edu.unbosque.view.ConsoleUtil;
+
+public class Cliente {
+    private static final int PUERTO = 5000;
+    private static final String IP = "localhost";
+
+    private static Socket socket;
+    private static ObjectInputStream entrada;
+    private static ObjectOutputStream salida;
+    private static ConsoleUtil view;
     
-    @Override
-    public void run() {
-    	
-    	// string to read message from input 
-        String line = ""; 
-  
-    	// keep reading until "Over" is input 
-        while (!line.equals("Over")) 
-        { 
-        	 // establish a connection 
-        	try
-            { 
-        		this.socket = new Socket(this.address, this.port); 
-                System.out.println("Connected"); 
-            
-                // sends output to the socket 
-                this.out = new DataOutputStream(socket.getOutputStream()); 
-        		
-        		//line = this.input.readLine(); 
-                line=sn.next();
-                this.out.writeUTF(line);
-                //close socket and output stream
-                this.out.close(); 
-                this.socket.close(); 
-                //Create a serverSocket to wait message from server
-                this.server = new ServerSocket(this.port+1);
-    	        this.socket = server.accept(); 
-    	        System.out.println("Received message:"); 
-    	        // takes input from the client socket 
-    	        this.in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-                //Print in server the client message
-                System.out.println(in.readUTF());
-                this.in.close();
-                this.server.close();
-            } 
-            catch(IOException i) 
-            { 
-                System.out.println(i); 
-            } 
-        } 
-        // close the connection 
-        try
-        { 
-            out.close(); 
-            socket.close(); 
-        } 
-        catch(IOException i) 
-        { 
-            System.out.println(i); 
-        } 
-    	
+    static ArrayList<EquipoPokemon> equipos;
+
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int numCaja = 0;
+    	int numPokemon = 0;
+        try {
+            // Conectar al servidor
+            socket = new Socket(IP, PUERTO);
+            entrada = new ObjectInputStream(socket.getInputStream());
+            salida = new ObjectOutputStream(socket.getOutputStream());
+
+            // Solicitar el nombre del entrenador
+            System.out.println("Ingrese su nombre de entrenador:");
+            String nombreEntrenador = scanner.nextLine();
+
+            // Crear un objeto Entrenador con el nombre ingresado
+            // Agregar un Pokémon al equipo del entrenador
+            EquipoPokemon equipo = new EquipoPokemon();
+            int[] estadisticaBase = {23, 42,34,54};
+            String[] ataque = {"Hola", "bola", "hed"};
+            Pokemon p = new Pokemon("Pikachu", 12, estadisticaBase, ataque );
+            equipo.agregarPokemon(p);
+            Entrenador entrenador = new Entrenador(equipo);
+
+            // Enviar el entrenador al servidor
+            salida.writeObject(entrenador);
+
+            // Recibir los equipos de la caja 1 del PC del entrenador
+            equipos = (ArrayList<EquipoPokemon>) entrada.readObject();
+            System.out.println("Equipos de la caja 1:");
+            for (EquipoPokemon eq : equipos) {
+                System.out.println(eq);
+
+            // Mostrar el menú principal
+            while (true) {
+                mostrarMenuPrincipal(entrenador);
+                int opcion = scanner.nextInt();
+
+                switch (opcion) {
+                    case 1:
+                        // Capturar un Pokemon
+                    	String nombre = view.readString("Ingrese nombre del pokemon a capturar");
+                    	int nivel = view.readInteger("Ingrese nivel del pokemon");
+                    	int estadisticas = view.readInteger("Ingrese cantidad de estadisticas");
+                    	int[]estadistica = new int[estadisticas];
+                    	for(int i=0; i<estadisticas; i++) {
+                    	
+                    		estadistica[i] = view.readInteger("Ingrese la estadistica "+i);
+                    	}
+                    	int numAtaques = view.readInteger("Ingrese numero de ataques a guardar");
+                    	String[] ataques = new String[numAtaques];
+                    	for(int i= 0; i<numAtaques; i++) {
+                    		ataques[i] = view.readString("Ingrese el ataque "+i);
+                    	}
+                    	Pokemon pokeNew = new Pokemon(nombre, nivel, estadistica, ataques);
+                        entrenador.capturarPokemon(p);
+                        break;
+
+                    case 2:
+                    	
+                    	numCaja = view.readInteger("Ingrese el numero de la caja al que quiere transferir");
+                    	numPokemon = view.readInteger("Ingrese el numero del pokemon a transferir");
+                        // Transferir un Pokemon del equipo a una caja en la PC
+                        entrenador.transferirPokemonAEquipo(numCaja, numPokemon);;
+                        break;
+
+                    case 3:
+                    	numCaja = view.readInteger("Ingrese el numero de la caja al que quiere transferir");
+                    	numPokemon = view.readInteger("Ingrese el numero del pokemon a transferir");
+                        // Transferir un Pokemon de una caja en la PC al equipo
+                        entrenador.transferirPokemonAPC(numCaja, numPokemon);
+                        break;
+
+                    case 4:
+                        // Liberar un Pokemon del equipo o una caja en la PC
+                    	numPokemon = view.readInteger("Ingrese el numero del pokemon a liberar");
+                        entrenador.liberarPokemon(numPokemon);
+                        break;
+
+                    case 5:
+                        // Mostrar el equipo del entrenador
+                        entrenador.mostrarEquipoEntrenador();
+                        break;
+
+                    case 6:
+                        // Mostrar una caja de la PC
+                    	numPokemon = view.readInteger("Ingrese el numero del pokemon a transferir");
+                        entrenador.mostrarCajaPC(numCaja);
+                        break;
+
+                    case 7:
+                        // Salir del programa
+                        System.out.println("Adios!");
+                        System.exit(0);
+
+                    default:
+                        System.out.println("Opcion no valida, intente de nuevo.");
+                        break;
+                }
+            }
+
+        }} catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            // Cerrar los recursos
+            try {
+                socket.close();
+                entrada.close();
+                salida.close();
+                scanner.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void mostrarMenuPrincipal(Entrenador entrenador) {
+        System.out.println("\n=== MENU PRINCIPAL ===");
+        System.out.println("Entrenador: "  /*entrenador.getNombreEntrenador()*/);
+        System.out.println("1. Capturar Pokemon");
+        System.out.println("2. Transferir Pokemon del equipo a la PC");
+        System.out.println("3. Transferir Pokemon de la PC al equipo");
+        System.out.println("4. Liberar Pokemon");
+        System.out.println("5. Mostrar equipo");
+        System.out.println("6. Mostrar caja de la PC");
+        System.out.println("7. Salir");
+        System.out.println("=======================");
+        System.out.println("Seleccione una opcion:");
+    
     }
 }
+
 
