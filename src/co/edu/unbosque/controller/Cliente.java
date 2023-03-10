@@ -13,25 +13,32 @@ import co.edu.unbosque.model.EquipoPokemon;
 import co.edu.unbosque.model.Pokemon;
 import co.edu.unbosque.view.ConsoleUtil;
 
-public class Cliente {
-    private static final int PUERTO = 5000;
-    private static final String IP = "localhost";
+public class Cliente extends Thread {
+    private int port = 5000;
+    private String IP = "localhost";
 
-    private static Socket socket;
-    private static ObjectInputStream entrada;
-    private static ObjectOutputStream salida;
-    private static ConsoleUtil view;
+    private Socket socket;
+    private ObjectInputStream entrada;
+    private ObjectOutputStream salida;
+    private ConsoleUtil view;
     
     static ArrayList<EquipoPokemon> equipos;
+    
+    public Cliente(String IP, int puerto) {
+    	this.port = puerto;
+    	this.IP = IP;
+    	this.run();
+    }
 
 
-    public static void main(String[] args) {
+    public void run() {
         Scanner scanner = new Scanner(System.in);
         int numCaja = 0;
     	int numPokemon = 0;
         try {
             // Conectar al servidor
-            socket = new Socket(IP, PUERTO);
+            socket = new Socket(IP, port);
+            System.out.println("Connected");
             entrada = new ObjectInputStream(socket.getInputStream());
             salida = new ObjectOutputStream(socket.getOutputStream());
 
@@ -155,5 +162,3 @@ public class Cliente {
     
     }
 }
-
-
